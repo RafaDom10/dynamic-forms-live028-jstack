@@ -1,8 +1,11 @@
+import { Reorder } from "framer-motion"
+import { useFieldArray, useForm } from "react-hook-form"
 import { PlusCircleIcon, Trash2Icon } from "lucide-react"
 import { Button } from "./components/Button"
 import { Input } from "./components/Input"
 import { Label } from "./components/Label"
-import { useFieldArray, useForm } from "react-hook-form"
+import { useState } from "react"
+import { cn } from "./lib/utils"
 
 export function App() {
   const form = useForm({
@@ -19,9 +22,30 @@ export function App() {
     name: 'links'
   })
 
+  const [ dragIndex, setDragIndex ] = useState<null | number>(null)
+
   const handleSubmit = form.handleSubmit((data) => {
     console.log(data)
   })
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index)
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+  }
+
+  const handleReorder = (newOrder: typeof links.fields) => {
+    if(dragIndex === null) return;
+    const draggingLink = links.fields[dragIndex]
+    newOrder.forEach((link, index) => {
+      if ( link === draggingLink ) {
+        links.move(dragIndex, index)
+        setDragIndex(index)
+      }
+    })
+  }
 
   return (
     <div className="grid place-items-center min-h-screen">
@@ -39,29 +63,49 @@ export function App() {
         </Button>
 
         <form className="mt-10 flex flex-col gap-4" onSubmit={handleSubmit}>
-          {links.fields.map((link, index) => (
-            <div key={link.id} className="flex gap-4">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="title">Título</Label>
-                <Input id="title" {...form.register(`links.${index}.title`)} />
-              </div>
-              <div className="flex-1 flex gap-4 items-end">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="url">URL</Label>
-                  <Input id="url" {...form.register(`links.${index}.url`)} />
-                </div>
-
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => links.remove(index)}
-                  tabIndex={-1}
+          <Reorder.Group
+            axis="y"
+            values={links.fields}
+            onReorder={handleReorder}
+            className="space-y-4"
+          >
+            {links.fields.map((link, index) => (
+              <Reorder.Item
+                key={link.id}
+                value={link}
+                onDragStart={() => handleDragStart(index)}
+                onDragEnd={handleDragEnd}
+                className="relative"
+              >
+                <div
+                  className={cn(
+                    "flex gap-4 transition-opacity",
+                    dragIndex !== null && dragIndex !== index && "opacity-50"
+                  )}
                 >
-                  <Trash2Icon className="size-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="title">Título</Label>
+                    <Input id="title" {...form.register(`links.${index}.title`)} />
+                  </div>
+                  <div className="flex-1 flex gap-4 items-end">
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="url">URL</Label>
+                      <Input id="url" {...form.register(`links.${index}.url`)} />
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => links.remove(index)}
+                      tabIndex={-1}
+                    >
+                      <Trash2Icon className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Reorder.Item>
+            ))}
+          </Reorder.Group>
 
           <Button
             type="button"
@@ -120,7 +164,7 @@ export function App() {
             </Button>
           </div>
 
-          <Button className="mt-10">
+          <Button type="submit">
             Submit
           </Button>
         </form>
